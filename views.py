@@ -5,6 +5,7 @@ import imghdr
 
 from django.shortcuts import render
 from django.http import HttpResponse
+from wsgiref.util import FileWrapper
 
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -25,25 +26,45 @@ INVALID_TOKEN = Response("Token not recognized", status=status.HTTP_401_UNAUTHOR
 def path_exists(location):
     return os.path.exists(os.path.join(DB_PATH, location))
 
-def generate_file_id(filename, token):
-    """
-    Generates another file name if provided one exists.
-    Uses incremental update,
-    e.g. filename_1 or filename_2 if filename_1 also exists.
-    """
-    pass
 
 def validate_file(f):
     """
-    Support for only JPEG, PNG, and GIF file types
+    imghdr.what returns None for non image types.
     """
     return imghdr.what('', next(f.chunks()))
+
+def validate_token(token):
+    """
+    Token will be valid if corresponding directory exists in database.
+    """
+    return path_exists(token)
 
 
 @api_view(['GET'])
 def get_image(request, token, image_id):
-    print(token)
-    print(image_id)
+    """
+    Return image corresponding to <image_id>.
+    """
+    if not validate_token(token):
+        return INVALID_TOKEN
+
+    not_found_response = Response("Image not found on the server", status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        with open(os.path.join(DB_PATH, token, 'imagemap.json')) as F:
+            imagemap = json.load(F)
+        if not image_id in imagemap:
+            return not_found_response
+        imagepath = os.path.join(DB_PATH, token, imagemap[image_id])
+        content_type = 'image/'+imghdr.what(imagepath)
+        response = HttpResponse(FileWrapper(open(imagepath, 'rb')), content_type=content_type)
+        # Get image size
+        response['Content-Length'] = os.path.getsize(imagepath)
+        response['Content-Disposition'] = 'attatchement; filename='+imagemap[image_id]
+        return response
+
+    except FileNotFoundError:
+        return not_found_response
 
 
 @api_view(['POST'])
@@ -52,8 +73,7 @@ def put_image(request, token):
     """
     Compress and save the image provided.
     """
-    if not path_exists(token):
-        # If location <token> doesn't exists, means token is invalid
+    if not validate_token(token):
         return INVALID_TOKEN
 
     if not request.data:
