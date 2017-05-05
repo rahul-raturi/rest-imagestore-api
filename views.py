@@ -223,7 +223,7 @@ def generate_token(request, username):
 
         # Generate new unique token
         token = secrets.token_urlsafe(10)[:10] 
-        while token in TOKEN_DB:
+        while path_exists(token): 
             token = secrets.token_urlsafe(10)[:10] 
         TOKEN_DB[username] = token
         with open(os.path.join(DB_PATH, 'tokens.json'), 'w') as F:
