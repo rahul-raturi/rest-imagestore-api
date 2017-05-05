@@ -25,6 +25,7 @@ INVALID_TOKEN = Response("Token not recognized", status=status.HTTP_401_UNAUTHOR
 FILE_NOT_FOUND = Response("Image[s] not found on the server", status=status.HTTP_404_NOT_FOUND)
 UNRECOGNIZED_FILE_TYPE = Response("Unrecognized file type", status=status.HTTP_406_NOT_ACCEPTABLE)
 
+
 def path_exists(*args):
     return os.path.exists(os.path.join(DB_PATH, *args))
 
@@ -34,6 +35,7 @@ def validate_file(f):
     imghdr.what returns None for non image types.
     """
     return imghdr.what('', next(f.chunks()))
+
 
 def validate_token(token):
     """
@@ -69,9 +71,9 @@ def get_image(request, token, image_id):
         response['Content-Length'] = size
         response['Content-Disposition'] = 'attatchement; filename='+imagemap[image_id]
         return response
-
     except FileNotFoundError:
         return FILE_NOT_FOUND
+
 
 @api_view(['GET'])
 def get_image_list(request, token):
@@ -120,7 +122,8 @@ def put_image(request, token):
             imagemap = json.load(F)
     except FileNotFoundError:
         imagemap = {}
-
+    
+    # Generate a unique 4 characters long image ID 
     imageid = secrets.token_urlsafe(4)[:4]
     while imageid in imagemap:
         imageid = secrets.token_urlsafe(4)[:4]
@@ -129,7 +132,7 @@ def put_image(request, token):
     with open(os.path.join(userdir, 'imagemap.json'), 'w') as F:
         json.dump(imagemap, F)
 
-    # Compress image
+    # Compress and write the image 
     with gzip.open(os.path.join(userdir, uploaded_file.name + '.gz'), 'wb') as F:
         for chunk in uploaded_file.chunks():
             F.write(chunk)
@@ -150,8 +153,10 @@ def remove_image(request, token, image_id):
             imagemap = json.load(F)
         if not image_id in imagemap:
             return FILE_NOT_FOUND
+
         # Delete the file
         os.remove(os.path.join(DB_PATH, token, imagemap[image_id]+'.gz'))
+
         # Update imagemap
         del imagemap[image_id]
         with open(os.path.join(DB_PATH, token, 'imagemap.json'), 'w') as F:
