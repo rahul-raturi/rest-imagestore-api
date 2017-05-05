@@ -2,6 +2,7 @@ import json
 import os
 import secrets
 import imghdr 
+import gzip
 
 from django.shortcuts import render
 from django.http import HttpResponse
@@ -49,23 +50,28 @@ def get_image(request, token, image_id):
     if not validate_token(token):
         return INVALID_TOKEN
 
-    not_found_response = Response("Image not found on the server", status=status.HTTP_404_NOT_FOUND)
-
     try:
         with open(os.path.join(DB_PATH, token, 'imagemap.json')) as F:
             imagemap = json.load(F)
         if not image_id in imagemap:
-            return not_found_response
-        imagepath = os.path.join(DB_PATH, token, imagemap[image_id])
-        content_type = 'image/'+imghdr.what(imagepath)
-        response = HttpResponse(FileWrapper(open(imagepath, 'rb')), content_type=content_type)
-        # Get image size
-        response['Content-Length'] = os.path.getsize(imagepath)
+            return FILE_NOT_FOUND
+        # Decompress image
+        compressed_imagepath = os.path.join(DB_PATH, token, imagemap[image_id]+'.gz')
+        image = gzip.open(compressed_imagepath)
+        # Detect file type
+        content_type = 'image/'+imghdr.what('', image.read())
+        # Get file size
+        image.seek(0, 2)
+        size = image.tell()
+        image.seek(0)
+        # Create response
+        response = HttpResponse(FileWrapper(image), content_type=content_type)
+        response['Content-Length'] = size
         response['Content-Disposition'] = 'attatchement; filename='+imagemap[image_id]
         return response
 
     except FileNotFoundError:
-        return not_found_response
+        return FILE_NOT_FOUND
 
 @api_view(['GET'])
 def get_image_list(request, token):
@@ -102,11 +108,11 @@ def put_image(request, token):
     uploaded_file = next(request.data.items())[1]        # Ignore multiple files, for now
 
     if not validate_file(uploaded_file):
-        return Response("Unrecognized file type", status=status.HTTP_406_NOT_ACCEPTABLE)
+        return UNRECOGNIZED_FILE_TYPE
 
     userdir = os.path.join(DB_PATH, token)
     
-    if os.path.exists(os.path.join(userdir, uploaded_file.name)):
+    if path_exists(token, uploaded_file.name+'.gz'):
         return Response("File exists", status=status.HTTP_409_CONFLICT)
 
     try:
@@ -123,8 +129,8 @@ def put_image(request, token):
     with open(os.path.join(userdir, 'imagemap.json'), 'w') as F:
         json.dump(imagemap, F)
 
-    print("ABOUT TO SAVE")
-    with open(os.path.join(userdir, uploaded_file.name), 'wb') as F:
+    # Compress image
+    with gzip.open(os.path.join(userdir, uploaded_file.name + '.gz'), 'wb') as F:
         for chunk in uploaded_file.chunks():
             F.write(chunk)
 
