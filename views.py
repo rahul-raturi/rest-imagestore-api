@@ -233,6 +233,7 @@ def generate_token(request, username):
         os.makedirs(os.path.join(DB_PATH, token))
         return Response({'token': TOKEN_DB[username]}, status=status.HTTP_201_CREATED)
 
+
 @api_view(['GET'])
 def retrieve_token(request, username):
     try:
