@@ -8,4 +8,5 @@ urlpatterns = [
     url(r'^imageapi/retrieve-token/(?P<username>[a-zA-Z0-9_]+)/$', views.retrieve_token, name='retrieve_token'),
     url(r'^imageapi/token/(?P<token>.{10})/get-image-list/$', views.get_image_list, name='get_image_list'),
     url(r'^imageapi/token/(?P<token>.{10})/delete-image/(?P<image_id>.{4})/$', views.remove_image, name='remove_image'),
+    url(r'^imageapi/token/(?P<token>.{10})/update-image/(?P<image_id>.{4})/$', views.update_image, name='update_image'),
 ]

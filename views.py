@@ -159,6 +159,47 @@ def remove_image(request, token, image_id):
         return Response(status=status.HTTP_200_OK)
     except FileNotFoundError:
         return FILE_NOT_FOUND
+
+
+@api_view(['PATCH'])
+@parser_classes((FormParser, MultiPartParser))
+def update_image(request, token, image_id):
+    """
+    Update image corresponding to <image_id> with new image data.
+    """
+    if not validate_token(token):
+        return INVALID_TOKEN
+
+    try:
+        with open(os.path.join(DB_PATH, token, 'imagemap.json')) as F:
+            imagemap = json.load(F)
+        if not image_id in imagemap:
+            return FILE_NOT_FOUND
+    except FileNotFoundError:
+        return FILE_NOT_FOUND
+
+    uploaded_file = next(request.data.items())[1]
+    if not validate_file(uploaded_file):
+        return UNRECOGNIZED_FILE_TYPE
+
+    # Delete existing file
+    os.remove(os.path.join(DB_PATH, token, imagemap[image_id]+'.gz'))
+
+    # Write new file
+    if path_exists(token, uploaded_file.name+'.gz'):
+        return Response("Cannot patch. File exists.", status=status.HTTP_409_CONFLICT)
+    with gzip.open(os.path.join(DB_PATH, token, uploaded_file.name+'.gz'), 'wb') as F:
+        for chunk in uploaded_file.chunks():
+            F.write(chunk)
+
+    # Update imagemap
+    imagemap[image_id] = uploaded_file.name
+    with open(os.path.join(DB_PATH, token, 'imagemap.json'), 'w') as F:
+        json.dump(imagemap, F)
+
+    return Response(status=status.HTTP_200_OK)
+
+
 @api_view(['GET'])
 def generate_token(request, username):
     """
