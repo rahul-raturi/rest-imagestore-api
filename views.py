@@ -138,3 +138,15 @@ def generate_token(request, username):
         # Create new folder for user
         os.makedirs(os.path.join(DB_PATH, token))
         return Response({'token': TOKEN_DB[username]}, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+def retrieve_token(request, username):
+    try:
+        with open(os.path.join(DB_PATH, 'tokens.json')) as F:
+            TOKEN_DB = json.load(F)
+        if username not in TOKEN_DB:
+            return Response("User does not exists", status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({username: TOKEN_DB[username]}, status=status.HTTP_200_OK)
+    except FileNotFoundError:
+        return Response("User does not exists", status=status.HTTP_404_NOT_FOUND)
