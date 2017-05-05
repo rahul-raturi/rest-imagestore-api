@@ -21,10 +21,11 @@ if not os.path.exists(DB_PATH):
 
 # Frequent responses
 INVALID_TOKEN = Response("Token not recognized", status=status.HTTP_401_UNAUTHORIZED)
+FILE_NOT_FOUND = Response("Image[s] not found on the server", status=status.HTTP_404_NOT_FOUND)
+UNRECOGNIZED_FILE_TYPE = Response("Unrecognized file type", status=status.HTTP_406_NOT_ACCEPTABLE)
 
-
-def path_exists(location):
-    return os.path.exists(os.path.join(DB_PATH, location))
+def path_exists(*args):
+    return os.path.exists(os.path.join(DB_PATH, *args))
 
 
 def validate_file(f):
