@@ -67,6 +67,25 @@ def get_image(request, token, image_id):
     except FileNotFoundError:
         return not_found_response
 
+@api_view(['GET'])
+def get_image_list(request, token):
+    """
+    Returns response consisting of all images associated with <token> and
+    their corresponding access id.
+    """
+    if not validate_token(token):
+        return INVALID_TOKEN
+
+    try:
+        with open(os.path.join(DB_PATH, token, 'imagemap.json')) as F:
+            imagemap = json.load(F)
+        if not imagemap:
+            return FILE_NOT_FOUND
+        response = {filename: fileid for fileid, filename in imagemap.items()}
+        return Response(response, status=status.HTTP_200_OK)
+    except FileNotFoundError:
+        return FILE_NOT_FOUND
+
 
 @api_view(['POST'])
 @parser_classes((FormParser, MultiPartParser))
