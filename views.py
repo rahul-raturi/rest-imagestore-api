@@ -131,6 +131,28 @@ def put_image(request, token):
     return Response({"File ID": imageid}, status=status.HTTP_201_CREATED)
 
 
+@api_view(['DELETE'])
+def remove_image(request, token, image_id):
+    """
+    Deletes image specified by <image_id>.
+    """
+    if not validate_token(token):
+        return INVALID_TOKEN
+
+    try:
+        with open(os.path.join(DB_PATH, token, 'imagemap.json')) as F:
+            imagemap = json.load(F)
+        if not image_id in imagemap:
+            return FILE_NOT_FOUND
+        # Delete the file
+        os.remove(os.path.join(DB_PATH, token, imagemap[image_id]+'.gz'))
+        # Update imagemap
+        del imagemap[image_id]
+        with open(os.path.join(DB_PATH, token, 'imagemap.json'), 'w') as F:
+            json.dump(imagemap, F)
+        return Response(status=status.HTTP_200_OK)
+    except FileNotFoundError:
+        return FILE_NOT_FOUND
 @api_view(['GET'])
 def generate_token(request, username):
     """
