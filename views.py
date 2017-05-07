@@ -179,6 +179,10 @@ def update_image(request, token, image_id):
     if not validate_token(token):
         return INVALID_TOKEN
 
+    if not request.data:
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
     try:
         with open(os.path.join(DB_PATH, token, 'imagemap.json')) as F:
             imagemap = json.load(F)
