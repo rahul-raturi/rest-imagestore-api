@@ -57,15 +57,19 @@ def get_image(request, token, image_id):
             imagemap = json.load(F)
         if not image_id in imagemap:
             return FILE_NOT_FOUND
+
         # Decompress image
         compressed_imagepath = os.path.join(DB_PATH, token, imagemap[image_id]+'.gz')
         image = gzip.open(compressed_imagepath)
+
         # Detect file type
         content_type = 'image/'+imghdr.what('', image.read())
+
         # Get file size
         image.seek(0, 2)
         size = image.tell()
         image.seek(0)
+
         # Create response
         response = HttpResponse(FileWrapper(image), content_type=content_type)
         response['Content-Length'] = size
